@@ -1,0 +1,105 @@
+Bienvenidos Instructor y Compañeros esta es una Prueba de un Archivo Subido en La app GitHub , para la simulacion de la presentacion de un Proyecto de software Para una Empresa De Logistica y Almacenamiento de Datos y Gestiones.
+
+
+{
+  "name": "web-design-management",
+  "version": "1.0.0",
+  "description": "Sistema de gestión para empresa de diseño web",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2"
+  }
+}
+
+const sqlite3 = require("sqlite3").verbose();
+const db = new sqlite3.Database("./backend/database.db");
+
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS clients (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    email TEXT,
+    phone TEXT
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER,
+    name TEXT,
+    description TEXT,
+    status TEXT,
+    FOREIGN KEY(client_id) REFERENCES clients(id)
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS invoices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER,
+    amount REAL,
+    date TEXT,
+    FOREIGN KEY(project_id) REFERENCES projects(id)
+  )`);
+});
+
+module.exports = db;
+
+const express = require("express");
+const router = express.Router();
+const db = require("../database");
+
+// Obtener todos los clientes
+router.get("/", (req, res) => {
+  db.all("SELECT * FROM clients", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// Agregar cliente
+router.post("/", (req, res) => {
+  const { name, email, phone } = req.body;
+  db.run("INSERT INTO clients (name, email, phone) VALUES (?, ?, ?)",
+    [name, email, phone],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ id: this.lastID });
+    }
+  );
+});
+
+module.exports = router;
+const API_URL = "http://localhost:3000/api";
+
+document.getElementById("clientForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("name").value;
+  const email = document.getElementById("email").value;
+  const phone = document.getElementById("phone").value;
+
+  await fetch(`${API_URL}/clients`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, phone })
+  });
+
+  loadClients();
+});
+
+async function loadClients() {
+  const res = await fetch(`${API_URL}/clients`);
+  const clients = await res.json();
+  const list = document.getElementById("clientList");
+  list.innerHTML = "";
+  clients.forEach(c => {
+    const li = document.createElement("li");
+    li.textContent = `${c.name} - ${c.email} - ${c.phone}`;
+    list.appendChild(li);
+  });
+}
+
+loadClients();
